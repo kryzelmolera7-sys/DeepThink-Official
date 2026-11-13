@@ -4,9 +4,11 @@ import {
   createThinkTagParserState,
   formatDurationMs,
   formatInferenceError,
+  isDirectIdentityQuery,
   isQuotaOrRateLimitError,
   parseSseBuffer,
   parseThinkTagChunk,
+  sanitizeIdentitySelfReference,
 } from './streamParser';
 
 test('parseThinkTagChunk extracts split <think> tags across chunks', () => {
@@ -68,4 +70,19 @@ test('formatInferenceError unwraps nested JSON 429 errors into readable prose', 
   const formatted = formatInferenceError(new Error(nested));
   assert.ok(formatted.includes('429'));
   assert.ok(!formatted.includes('{"error"'));
+});
+
+test('isDirectIdentityQuery matches identity questions and ignores general prompts', () => {
+  assert.equal(isDirectIdentityQuery('Who are you?'), true);
+  assert.equal(isDirectIdentityQuery('what model are you'), true);
+  assert.equal(isDirectIdentityQuery("What's your name?"), true);
+  assert.equal(isDirectIdentityQuery('Explain Paxos vs Raft'), false);
+});
+
+test('sanitizeIdentitySelfReference replaces underlying model self-references with DeepThink 1', () => {
+  const raw = 'I am Gemini 4 Hydrogen, a large language model built by Google.';
+  const sanitized = sanitizeIdentitySelfReference(raw);
+  assert.ok(sanitized.includes('DeepThink 1'));
+  assert.ok(!sanitized.includes('Gemini'));
+  assert.ok(!sanitized.includes('Google'));
 });

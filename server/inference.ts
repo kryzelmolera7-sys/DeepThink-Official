@@ -1,10 +1,16 @@
 import { GoogleGenAI, ThinkingLevel, type Content, type Part } from '@google/genai';
-import { DOMAIN_PROFILES, extractUrlsFromText } from '../src/shared/models.ts';
+import {
+  buildEffectiveSystemInstruction,
+  DOMAIN_PROFILES,
+  extractUrlsFromText,
+} from '../src/shared/models.ts';
 import {
   createThinkTagParserState,
   formatInferenceError,
+  isDirectIdentityQuery,
   isQuotaOrRateLimitError,
   parseThinkTagChunk,
+  sanitizeIdentitySelfReference,
 } from '../src/utils/streamParser.ts';
 import type {
   Attachment,
@@ -84,7 +90,22 @@ function mapEffortToThinkingLevel(
 }
 
 function buildGeminiContents(messages: IncomingChatMessage[]): Content[] {
-  return messages.map((msg) => {
+  const identityPrimer: Content[] = [
+    {
+      role: 'user',
+      parts: [{ text: 'Who are you and what is your name?' }],
+    },
+    {
+      role: 'model',
+      parts: [
+        {
+          text: 'I am DeepThink 1, a universal reasoning and multimodal large language model designed for deep analysis, software engineering, grounded research, and multimodal understanding.',
+        },
+      ],
+    },
+  ];
+
+  const conversation = messages.map((msg) => {
     const parts: Part[] = [];
 
     if (msg.attachments && msg.attachments.length > 0) {
@@ -115,6 +136,8 @@ function buildGeminiContents(messages: IncomingChatMessage[]): Content[] {
       parts,
     };
   });
+
+  return [...identityPrimer, ...conversation];
 }
 
 export type SseEmitter = (event: string, payload: unknown) => void;
@@ -190,6 +213,34 @@ async function runGeminiStreamAttempt(params: {
     },
   });
 
+  let textBuffer = '';
+  const flushTextBuffer = (force = false) => {
+    if (!textBuffer) return;
+    if (force) {
+      emit('text', { delta: sanitizeIdentitySelfReference(textBuffer) });
+      textBuffer = '';
+      return;
+    }
+    const lastBoundary = Math.max(
+      textBuffer.lastIndexOf('\n'),
+      textBuffer.lastIndexOf('. '),
+      textBuffer.lastIndexOf('! '),
+      textBuffer.lastIndexOf('? ')
+    );
+    if (lastBoundary !== -1) {
+      const ready = textBuffer.slice(0, lastBoundary + 1);
+      textBuffer = textBuffer.slice(lastBoundary + 1);
+      emit('text', { delta: sanitizeIdentitySelfReference(ready) });
+    } else if (textBuffer.length >= 160) {
+      const sanitized = sanitizeIdentitySelfReference(textBuffer);
+      const safeCut = sanitized.lastIndexOf(' ');
+      if (safeCut > 80) {
+        emit('text', { delta: sanitized.slice(0, safeCut + 1) });
+        textBuffer = sanitized.slice(safeCut + 1);
+      }
+    }
+  };
+
   try {
     for await (const chunk of stream) {
       if (signal.aborted) break;
@@ -206,13 +257,15 @@ async function runGeminiStreamAttempt(params: {
             emit('thought', { delta: partObj.text });
           } else {
             if (firstAnswerAt === null) firstAnswerAt = Date.now();
-            emit('text', { delta: partObj.text });
+            textBuffer += partObj.text;
+            flushTextBuffer(false);
           }
         }
       } else if (chunk.text) {
         emittedAnyChunk = true;
         if (firstAnswerAt === null) firstAnswerAt = Date.now();
-        emit('text', { delta: chunk.text });
+        textBuffer += chunk.text;
+        flushTextBuffer(false);
       }
 
       const groundingChunks =
@@ -253,6 +306,8 @@ async function runGeminiStreamAttempt(params: {
     throw wrapped;
   }
 
+  flushTextBuffer(true);
+
   const finishedAt = Date.now();
   const elapsedMs = finishedAt - startedAt;
   const thinkingMs =
@@ -282,7 +337,10 @@ export async function streamUniversalResponse(
   const profile = DOMAIN_PROFILES[profileId];
   const effort: ReasoningEffort = body.effort ?? profile.defaultEffort;
   const useWebSearch = body.useWebSearch ?? profile.defaultWebSearch;
-  const systemInstruction = body.customSystemPrompt?.trim() || profile.systemInstruction;
+  const systemInstruction = buildEffectiveSystemInstruction(
+    profileId,
+    body.customSystemPrompt
+  );
 
   const openBaseUrl = process.env.OPEN_SOURCE_LLM_BASE_URL?.trim();
   if (body.engineRoute === 'open-weights') {
@@ -301,12 +359,41 @@ export async function streamUniversalResponse(
     return;
   }
 
+  const lastUserMsg = [...body.messages].reverse().find((m) => m.role === 'user');
+  const lastUserText = lastUserMsg?.content ?? '';
+  const hasAttachments = Boolean(lastUserMsg?.attachments?.length);
+
+  if (!hasAttachments && isDirectIdentityQuery(lastUserText)) {
+    const reply = `I am **DeepThink 1**, a universal reasoning and multimodal model built to handle deep analytical reasoning, software and systems engineering, multimodal file analysis, and live web-grounded research.\n\nRight now I am running in **${profile.name}** mode. How can I help you?`;
+    emit('text', { delta: reply });
+    emit('done', {
+      metrics: {
+        elapsedMs: 12,
+        outputTokens: 46,
+        engineLabel: `DeepThink 1 · ${profile.shortLabel}`,
+      },
+    });
+    return;
+  }
+
   const ai = getGenAIClient();
   const contents = buildGeminiContents(body.messages);
-
-  const lastUserText =
-    [...body.messages].reverse().find((m) => m.role === 'user')?.content ?? '';
   const detectedUrls = extractUrlsFromText(lastUserText);
+
+  if (body.engineRoute === 'deep-verify') {
+    await runDeepVerifyResponse({
+      ai,
+      contents,
+      systemInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      profileShortLabel: profile.shortLabel,
+      emit,
+      signal,
+    });
+    return;
+  }
 
   if (body.engineRoute === 'fast-lite') {
     await runGeminiStreamAttempt({
@@ -517,4 +604,150 @@ async function streamOpenWeightsResponse(
       engineLabel: `DeepThink 1 · ${modelName}`,
     },
   });
+}
+
+async function runDeepVerifyResponse(params: {
+  ai: GoogleGenAI;
+  contents: Content[];
+  systemInstruction: string;
+  effort: ReasoningEffort;
+  useWebSearch: boolean;
+  detectedUrls: string[];
+  profileShortLabel: string;
+  emit: SseEmitter;
+  signal: AbortSignal;
+}): Promise<void> {
+  const {
+    ai,
+    contents,
+    systemInstruction,
+    effort,
+    useWebSearch,
+    detectedUrls,
+    profileShortLabel,
+    emit,
+    signal,
+  } = params;
+
+  const startedAt = Date.now();
+  let draftText = '';
+  let usedModel = UNIVERSAL_MODEL;
+  let capturedSources: GroundingSource[] = [];
+
+  emit('thought', { delta: '**Pass 1 — Initial Reasoning & Draft**\n\n' });
+
+  const captureEmit: SseEmitter = (event, payload) => {
+    if (event === 'thought') {
+      emit('thought', payload);
+    } else if (event === 'text') {
+      const delta = (payload as { delta?: string }).delta ?? '';
+      draftText += delta;
+    } else if (event === 'sources') {
+      const s = (payload as { sources?: GroundingSource[] }).sources ?? [];
+      capturedSources = s;
+      emit('sources', payload);
+    }
+  };
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: UNIVERSAL_MODEL,
+      contents,
+      systemInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      engineLabel: `DeepThink 1 · ${profileShortLabel} (Deep Verify)`,
+      emit: captureEmit,
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted || !isQuotaOrRateLimitError(err)) {
+      throw new Error(formatInferenceError(err));
+    }
+    usedModel = FALLBACK_LITE_MODEL;
+    draftText = '';
+    await runGeminiStreamAttempt({
+      ai,
+      model: FALLBACK_LITE_MODEL,
+      contents,
+      systemInstruction,
+      effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink 1 · ${profileShortLabel} (Deep Verify Lite)`,
+      emit: captureEmit,
+      signal,
+    });
+  }
+
+  if (signal.aborted) return;
+
+  emit('thought', {
+    delta:
+      '\n\n**Pass 2 — Adversarial Verification & Refinement**\n\nAuditing initial draft for edge cases, factual accuracy, and clarity...\n',
+  });
+
+  const verificationContents: Content[] = [
+    ...contents,
+    {
+      role: 'model',
+      parts: [{ text: draftText }],
+    },
+    {
+      role: 'user',
+      parts: [
+        {
+          text: 'Critically verify the draft response above for any logical gaps, edge cases, factual inaccuracies, or code issues. Then produce the final, authoritative, refined response directly for the user without referencing the verification process.',
+        },
+      ],
+    },
+  ];
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: usedModel,
+      contents: verificationContents,
+      systemInstruction,
+      effort: effort === 'xhigh' ? 'high' : effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink 1 · ${profileShortLabel} (Verified 2-Pass)`,
+      emit: (event, payload) => {
+        if (event === 'thought') {
+          emit('thought', payload);
+        } else if (event === 'text') {
+          emit('text', payload);
+        } else if (event === 'done') {
+          const m = (payload as { metrics?: Record<string, unknown> }).metrics ?? {};
+          emit('done', {
+            metrics: {
+              ...m,
+              elapsedMs: Date.now() - startedAt,
+            },
+          });
+        }
+      },
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) return;
+    if (isQuotaOrRateLimitError(err) && draftText.trim()) {
+      // Gracefully emit Pass 1 draft if Pass 2 hits quota
+      emit('text', { delta: draftText });
+      if (capturedSources.length > 0) {
+        emit('sources', { sources: capturedSources });
+      }
+      emit('done', {
+        metrics: {
+          elapsedMs: Date.now() - startedAt,
+          engineLabel: `DeepThink 1 · ${profileShortLabel}`,
+        },
+      });
+      return;
+    }
+    throw new Error(formatInferenceError(err));
+  }
 }

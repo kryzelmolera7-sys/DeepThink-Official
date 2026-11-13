@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import {
   AlertCircle,
   ArrowUp,
@@ -39,6 +39,46 @@ interface ComposerProps {
   onStop: () => void;
 }
 
+const EFFORT_LEVEL_INDEX: Record<ReasoningEffort, number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  xhigh: 4,
+};
+
+function EffortDepthBars({ effort }: { effort: ReasoningEffort }) {
+  const activeBars = EFFORT_LEVEL_INDEX[effort];
+  const barHeights = [6, 9, 12, 15];
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex items-end gap-[2px] h-4 px-1.5"
+    >
+      {barHeights.map((height, idx) => {
+        const active = idx < activeBars;
+        return (
+          <span
+            key={height}
+            style={{
+              height: `${height}px`,
+              transform: `scaleY(${active ? 1 : 0.42})`,
+              transformOrigin: 'bottom',
+            }}
+            className={`w-[2.5px] rounded-xs transition-[transform,opacity,background-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              effort === 'xhigh' && active
+                ? 'bg-blue-500 dark:bg-blue-400 opacity-100'
+                : active
+                  ? 'bg-slate-700 dark:bg-slate-200 opacity-100'
+                  : 'bg-slate-400 dark:bg-slate-600 opacity-35'
+            }`}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
 export function Composer({
   input,
   onInputChange,
@@ -60,9 +100,36 @@ export function Composer({
 }: ComposerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [effortFeedback, setEffortFeedback] = useState<string | null>(null);
+  const [isEffortPulsing, setIsEffortPulsing] = useState(false);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    };
+  }, []);
 
   const canSend =
     !isStreaming && (input.trim().length > 0 || attachments.length > 0);
+
+  const handleSelectEffort = (next: ReasoningEffort) => {
+    onEffortChange(next);
+    const meta = REASONING_EFFORTS.find((r) => r.id === next);
+    setIsEffortPulsing(true);
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    pulseTimerRef.current = setTimeout(() => setIsEffortPulsing(false), 260);
+
+    if (meta) {
+      setEffortFeedback(`${meta.label} · ${meta.hint}`);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = setTimeout(() => {
+        setEffortFeedback(null);
+      }, 2400);
+    }
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -124,7 +191,7 @@ export function Composer({
   };
 
   return (
-    <div className="shrink-0 px-4 md:px-8 pb-5 pt-2 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent dark:from-[#0B0F17] dark:via-[#0B0F17]/95">
+    <div className="shrink-0 px-4 md:px-8 pb-5 pt-2 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent dark:from-[#090D16] dark:via-[#090D16]/95">
       <div className="max-w-3xl mx-auto">
         {attachError && (
           <div
@@ -146,7 +213,29 @@ export function Composer({
           </div>
         )}
 
-        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-xs focus-within:border-blue-600/70 dark:focus-within:border-blue-500/70 transition-colors">
+        {/* Effort selection feedback caption */}
+        <div className="h-5 mb-1 flex items-center justify-end px-1 overflow-hidden">
+          <span
+            aria-live="polite"
+            className={`text-[11px] font-medium text-slate-500 dark:text-slate-400 tabular-nums transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              effortFeedback
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-1 pointer-events-none'
+            }`}
+          >
+            {effortFeedback || ''}
+          </span>
+        </div>
+
+        <div
+          className={`rounded-xl bg-white dark:bg-[#111827] border shadow-sm dark:shadow-[0_16px_36px_-14px_rgba(0,0,0,0.7)] transition-[border-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] focus-within:border-blue-600/80 dark:focus-within:border-blue-500/80 ${
+            isEffortPulsing
+              ? 'scale-[0.996] border-blue-500/70 dark:border-blue-400/70'
+              : effort === 'xhigh'
+                ? 'border-blue-600/40 dark:border-blue-500/40'
+                : 'border-slate-200/90 dark:border-slate-800'
+          }`}
+        >
           {/* Attachment chips */}
           {attachments.length > 0 && (
             <div className="px-3.5 pt-3 flex flex-wrap gap-2">
@@ -182,7 +271,7 @@ export function Composer({
           )}
 
           {/* Prompt textarea */}
-          <div className="px-3.5 pt-3 pb-2">
+          <div className="px-4 pt-3.5 pb-2">
             <label htmlFor="deepthink-prompt" className="sr-only">
               Ask DeepThink 1 anything
             </label>
@@ -198,7 +287,7 @@ export function Composer({
           </div>
 
           {/* Controls row */}
-          <div className="px-3 pb-2.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-end justify-between gap-2">
+          <div className="px-3 pb-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-end justify-between gap-2">
             <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
               {/* Attach file */}
               <input
@@ -213,7 +302,7 @@ export function Composer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Attach image, audio, PDF, or code file"
-                className="min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/90 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Paperclip className="w-3.5 h-3.5 shrink-0" />
                 <span className="hidden sm:inline">Attach</span>
@@ -236,25 +325,29 @@ export function Composer({
                 ))}
               </select>
 
-              {/* Reasoning Effort segmented control */}
+              {/* Reasoning Effort segmented control with animated depth bars & tactile transition */}
               <div
                 role="group"
                 aria-label="Reasoning effort"
-                className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80"
+                className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800"
               >
+                <EffortDepthBars effort={effort} />
                 {REASONING_EFFORTS.map((item) => {
                   const active = effort === item.id;
+                  const isMaxActive = active && item.id === 'xhigh';
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => onEffortChange(item.id)}
+                      onClick={() => handleSelectEffort(item.id)}
                       title={item.hint}
                       aria-pressed={active}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                        active
-                          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-50 shadow-2xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-[transform,background-color,color,border-color,box-shadow] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                        isMaxActive
+                          ? 'bg-blue-700 dark:bg-blue-600 text-white shadow-xs'
+                          : active
+                            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent'
                       }`}
                     >
                       {item.label}
@@ -270,8 +363,8 @@ export function Composer({
                 aria-pressed={useWebSearch}
                 className={`min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-medium border inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   useWebSearch
-                    ? 'border-blue-600/50 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300'
-                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'border-blue-600/50 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/90'
                 }`}
               >
                 <Globe className="w-3.5 h-3.5 shrink-0" />
@@ -289,8 +382,9 @@ export function Composer({
                 onChange={(e) => onEngineRouteChange(e.target.value as EngineRoute)}
                 className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="auto">Auto (Universal)</option>
-                <option value="fast-lite">Lite (High Quota)</option>
+                <option value="auto">Auto</option>
+                <option value="deep-verify">2-Pass Verify</option>
+                <option value="fast-lite">Lite</option>
                 {engineStatus?.openWeightsConfigured && (
                   <option value="open-weights">
                     {engineStatus.openWeightsModel || 'Open-Weights'}

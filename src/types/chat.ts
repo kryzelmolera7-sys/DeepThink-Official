@@ -7,7 +7,7 @@ export type DomainProfileId =
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 
-export type EngineRoute = 'auto' | 'fast-lite' | 'open-weights';
+export type EngineRoute = 'auto' | 'deep-verify' | 'fast-lite' | 'open-weights';
 
 export interface Attachment {
   id: string;

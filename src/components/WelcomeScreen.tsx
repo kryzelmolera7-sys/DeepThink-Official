@@ -9,18 +9,19 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onSelectStarter }: WelcomeScreenProps) {
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-10 flex flex-col items-center justify-center">
-      <div className="w-full max-w-3xl space-y-8">
-        <div className="space-y-3 text-center">
-          <div className="inline-flex items-center justify-center p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-10 flex flex-col items-center justify-center relative">
+      <div className="w-full max-w-3xl space-y-8 relative">
+        <div className="space-y-3.5 text-center">
+          <div className="inline-flex items-center justify-center p-3 rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-xs dark:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]">
             <BrandMark className="w-7 h-7" />
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 text-balance">
+          <h1 className="font-display text-2xl sm:text-[32px] font-semibold tracking-tight text-slate-900 dark:text-slate-50 text-balance">
             DeepThink 1 Universal Workspace
           </h1>
           <p className="text-sm sm:text-[15px] leading-relaxed text-slate-600 dark:text-slate-400 max-w-xl mx-auto text-balance">
-            Multi-step reasoning with inspectable thought traces, code synthesis,
-            multimodal file analysis, and live web-grounded research.
+            Multi-step reasoning with inspectable thought traces, code
+            synthesis, multimodal file analysis, and live web-grounded
+            research.
           </p>
         </div>
 
@@ -30,13 +31,13 @@ export function WelcomeScreen({ onSelectStarter }: WelcomeScreenProps) {
               key={item.id}
               type="button"
               onClick={() => onSelectStarter(item)}
-              className="group text-left p-4 rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 hover:border-blue-600/50 dark:hover:border-blue-500/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="group text-left p-4 rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 hover:border-blue-600/60 dark:hover:border-blue-500/60 hover:-translate-y-0.5 active:scale-[0.99] shadow-2xs dark:shadow-none transition-[transform,border-color,background-color] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {item.category}
                 </span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors shrink-0" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors shrink-0" />
               </div>
               <div className="font-display text-[15px] font-semibold text-slate-900 dark:text-slate-100 mb-1">
                 {item.title}

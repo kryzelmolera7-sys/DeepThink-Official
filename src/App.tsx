@@ -103,7 +103,7 @@ export default function App() {
     } catch {
       // ignore
     }
-    return false;
+    return true;
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -522,7 +522,7 @@ export default function App() {
         onToggleTheme={() => setIsDark((d) => !d)}
       />
 
-      <main className="flex-1 min-w-0 flex flex-col h-full bg-white dark:bg-[#0B0F17]">
+      <main className="flex-1 min-w-0 flex flex-col h-full bg-white dark:bg-[#090D16]">
         <TopBar
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((o) => !o)}

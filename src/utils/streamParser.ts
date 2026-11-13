@@ -186,3 +186,44 @@ export function formatInferenceError(err: unknown): string {
   }
   return clean || 'Unexpected inference error.';
 }
+
+export function isDirectIdentityQuery(prompt: string): boolean {
+  const normalized = prompt
+    .toLowerCase()
+    .replace(/[?!.,'"]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized || normalized.length > 80) return false;
+
+  const patterns = [
+    /^(?:hi |hello |hey )?who are you$/,
+    /^(?:hi |hello |hey )?what are you$/,
+    /^(?:hi |hello |hey )?whats your name$/,
+    /^(?:hi |hello |hey )?what is your name$/,
+    /^(?:hi |hello |hey )?what model are you$/,
+    /^(?:hi |hello |hey )?which model are you$/,
+    /^(?:hi |hello |hey )?what llm are you$/,
+    /^(?:hi |hello |hey )?which llm are you$/,
+    /^(?:hi |hello |hey )?introduce yourself$/,
+    /^(?:hi |hello |hey )?tell me about yourself$/,
+  ];
+
+  return patterns.some((re) => re.test(normalized));
+}
+
+export function sanitizeIdentitySelfReference(text: string): string {
+  return text
+    .replace(
+      /\bI(?:'m| am) (?:Gemini(?: 4 Hydrogen| 3\.1 Flash[- ]Lite)?|a large language model)(?:,?\s*(?:built|trained|created|developed) by Google)?/gi,
+      'I am DeepThink 1, a universal reasoning and multimodal model'
+    )
+    .replace(
+      /\b(?:Gemini 4 Hydrogen|Gemini 3\.1 Flash[- ]Lite|Gemini)\b(?=\s+(?:model|LLM|assistant|here))/gi,
+      'DeepThink 1'
+    )
+    .replace(
+      /\b(?:built|trained|created|developed) by Google\b/gi,
+      'designed as DeepThink 1'
+    );
+}

@@ -20,7 +20,7 @@ export function TopBar({
   canExport,
 }: TopBarProps) {
   return (
-    <header className="h-14 shrink-0 px-4 md:px-6 border-b border-slate-200 dark:border-slate-800/90 bg-white/95 dark:bg-[#0B0F17]/95 flex items-center justify-between gap-6">
+    <header className="h-14 shrink-0 px-4 md:px-6 border-b border-slate-200 dark:border-slate-800/90 bg-white/95 dark:bg-[#090D16]/95 flex items-center justify-between gap-6">
       <div className="flex items-center gap-3 min-w-0">
         <button
           type="button"

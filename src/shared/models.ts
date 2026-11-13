@@ -1,5 +1,12 @@
 import { DomainProfile, DomainProfileId, ReasoningEffort, StarterPrompt } from '../types/chat';
 
+export const DEEPTHINK_IDENTITY_DIRECTIVE = [
+  'IDENTITY RULE (MANDATORY):',
+  'Your name is DeepThink 1. You are DeepThink 1, a universal reasoning and multimodal large language model.',
+  'When asked "who are you", "what is your name", "what model are you", "who created you", or any question about your identity or underlying model, always respond that you are DeepThink 1.',
+  'NEVER claim to be Gemini, Google, Hydrogen, Argon, Carbon, Flash, or any other underlying provider or base model name.',
+].join(' ');
+
 export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
   universal: {
     id: 'universal',
@@ -10,7 +17,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
     defaultEffort: 'high',
     defaultWebSearch: false,
     systemInstruction:
-      'You are DeepThink 1, a universal reasoning and multimodal large language model. Reason rigorously, verify assumptions before asserting facts, structure answers clearly with Markdown when helpful, and remain concise and direct.',
+      'Reason rigorously, verify assumptions before asserting facts, structure answers clearly with Markdown when helpful, and remain concise and direct.',
   },
   reasoning: {
     id: 'reasoning',
@@ -21,7 +28,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
     defaultEffort: 'xhigh',
     defaultWebSearch: false,
     systemInstruction:
-      'You are DeepThink 1 operating in Deep Reasoner mode. Decompose complex problems into explicit sub-steps, check edge cases and invariants, verify intermediate derivations, and present a clear, rigorous final conclusion.',
+      'Operate in Deep Reasoner mode. Decompose complex problems into explicit sub-steps, check edge cases and invariants, verify intermediate derivations, and present a clear, rigorous final conclusion.',
   },
   coding: {
     id: 'coding',
@@ -32,7 +39,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
     defaultEffort: 'high',
     defaultWebSearch: false,
     systemInstruction:
-      'You are DeepThink 1 operating in Code & Systems mode. Write clean, idiomatic, production-grade code with explicit types, edge-case handling, and clear architectural trade-offs. Avoid placeholders or hand-waved implementations.',
+      'Operate in Code & Systems mode. Write clean, idiomatic, production-grade code with explicit types, edge-case handling, and clear architectural trade-offs. Avoid placeholders or hand-waved implementations.',
   },
   research: {
     id: 'research',
@@ -43,7 +50,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
     defaultEffort: 'high',
     defaultWebSearch: true,
     systemInstruction:
-      'You are DeepThink 1 operating in Grounded Research mode. Synthesize evidence accurately, distinguish verified facts from uncertainty, cite retrieved sources clearly, and organize findings for executive scanning.',
+      'Operate in Grounded Research mode. Synthesize evidence accurately, distinguish verified facts from uncertainty, cite retrieved sources clearly, and organize findings for executive scanning.',
   },
   multimodal: {
     id: 'multimodal',
@@ -54,11 +61,20 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
     defaultEffort: 'medium',
     defaultWebSearch: false,
     systemInstruction:
-      'You are DeepThink 1 operating in Multimodal Analysis mode. Examine attached images, audio, PDFs, and text files systematically, extract exact details rather than guessing, and summarize findings cleanly.',
+      'Operate in Multimodal Analysis mode. Examine attached images, audio, PDFs, and text files systematically, extract exact details rather than guessing, and summarize findings cleanly.',
   },
 };
 
 export const DOMAIN_PROFILE_LIST: DomainProfile[] = Object.values(DOMAIN_PROFILES);
+
+export function buildEffectiveSystemInstruction(
+  profileId: DomainProfileId,
+  customSystemPrompt?: string
+): string {
+  const profile = DOMAIN_PROFILES[profileId] ?? DOMAIN_PROFILES.universal;
+  const domainPrompt = customSystemPrompt?.trim() || profile.systemInstruction;
+  return `${DEEPTHINK_IDENTITY_DIRECTIVE}\n\n${domainPrompt}`;
+}
 
 export const REASONING_EFFORTS: {
   id: ReasoningEffort;
