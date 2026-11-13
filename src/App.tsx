@@ -568,6 +568,7 @@ export default function App() {
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
           threadTitle={activeThread.title}
           hasCustomSystemPrompt={Boolean(activeThread.customSystemPrompt.trim())}
+          engineRoute={engineRoute}
           onOpenSystemPrompt={() => setSystemModalOpen(true)}
           onOpenCapabilities={() => setCapabilitiesModalOpen(true)}
           onExportMarkdown={handleExportMarkdown}

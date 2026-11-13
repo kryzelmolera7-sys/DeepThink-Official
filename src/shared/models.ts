@@ -1,4 +1,4 @@
-import { DomainProfile, DomainProfileId, ReasoningEffort, StarterPrompt } from '../types/chat';
+import { DomainProfile, DomainProfileId, EngineRoute, ReasoningEffort, StarterPrompt } from '../types/chat';
 
 export const DEEPTHINK_IDENTITY_DIRECTIVE = [
   'IDENTITY RULE (MANDATORY):',
@@ -109,7 +109,80 @@ export const REASONING_EFFORTS: {
   { id: 'xhigh', label: 'Max', hint: 'Maximum reasoning depth for hard problems' },
 ];
 
+export interface EngineRouteInfo {
+  id: EngineRoute;
+  name: string;
+  badge: string;
+  shortLabel: string;
+  description: string;
+}
+
+export const ENGINE_ROUTES_INFO: EngineRouteInfo[] = [
+  {
+    id: 'auto',
+    name: 'Auto Reasoning',
+    badge: 'Standard',
+    shortLabel: 'Auto',
+    description: 'Dynamic reasoning compute scaling based on query complexity.',
+  },
+  {
+    id: 'swarm',
+    name: 'Swarm Intelligence',
+    badge: 'Multi-Agent',
+    shortLabel: 'Swarm',
+    description: 'Consensus engine with Architect, Adversarial Critic, and Synthesizer sub-agents.',
+  },
+  {
+    id: 'security-swarm',
+    name: 'Security Swarm',
+    badge: 'Vulnerability Audit',
+    shortLabel: 'Sec Swarm',
+    description: 'Defensive web vulnerability hunter, OWASP Top 10 audit, and code hardening.',
+  },
+  {
+    id: 'tree-of-thought',
+    name: 'Tree-of-Thought',
+    badge: '3 Branches',
+    shortLabel: 'ToT',
+    description: 'Explores 3 independent solution hypotheses before synthesizing the optimal answer.',
+  },
+  {
+    id: 'deep-verify',
+    name: '2-Pass Verify',
+    badge: 'Adversarial',
+    shortLabel: '2-Pass',
+    description: 'Pass 1 drafts candidate solution; Pass 2 audits edge cases and refines.',
+  },
+  {
+    id: 'fast-lite',
+    name: 'Fast Lite',
+    badge: 'Speed',
+    shortLabel: 'Lite',
+    description: 'High-speed, low-latency reasoning via Gemini 3.1 Flash-Lite.',
+  },
+];
+
 export const STARTER_PROMPTS: StarterPrompt[] = [
+  {
+    id: 'starter-swarm',
+    category: 'Swarm Multi-Agent',
+    title: 'Consensus Swarm: High-throughput event pipeline',
+    prompt:
+      'Activate the DeepThink Swarm. Have the Lead Architect, Adversarial Critic, and Synthesizer collaborate to design a fault-tolerant, 100k events/sec real-time analytics pipeline using Kafka, DuckDB, and WebSocket subscribers, auditing backpressure and node partition recovery.',
+    profile: 'coding',
+    effort: 'xhigh',
+    useWebSearch: false,
+  },
+  {
+    id: 'starter-security-swarm',
+    category: 'Security Swarm Vulnerability Audit',
+    title: 'Security Swarm: Web App & API Vulnerability Audit',
+    prompt:
+      'Deploy the Security Swarm to audit my web application for vulnerabilities. The stack includes: Express.js REST API with JWT stored in localStorage, file uploads stored on local disk, PostgreSQL database queries with dynamic string concatenation, and a React frontend rendering user profile HTML with dangerouslySetInnerHTML. Analyze threat surfaces, pinpoint OWASP Top 10 vulnerabilities, and provide copy-paste hardened code fixes.',
+    profile: 'security',
+    effort: 'xhigh',
+    useWebSearch: false,
+  },
   {
     id: 'starter-reasoning',
     category: 'Reasoning & Proof',

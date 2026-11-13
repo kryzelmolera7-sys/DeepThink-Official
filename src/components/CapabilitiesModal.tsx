@@ -6,7 +6,9 @@ import {
   GitBranch,
   Globe,
   Mic,
+  Network,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Volume2,
   X,
@@ -23,6 +25,20 @@ export function CapabilitiesModal({ isOpen, onClose }: CapabilitiesModalProps) {
   if (!isOpen) return null;
 
   const capabilities = [
+    {
+      icon: Network,
+      title: 'SWARM Multi-Agent Consensus Intelligence',
+      badge: 'New in v1.5 · Flagship',
+      description:
+        'Orchestrates a collaborative cluster of specialized sub-agents: Lead Architect (strategic blueprint & constraints), Adversarial Critic (failure modes, edge cases & red-team stress testing), and Consensus Synthesizer (authoritative, verified final output).',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Security Swarm Web & API Vulnerability Auditor',
+      badge: 'New in v1.5 · Security',
+      description:
+        'Deploys a defensive security agent cluster: Threat Surface Modeler (entry points, auth boundaries & STRIDE analysis), Vulnerability Hunter (OWASP Top 10, CWE flaws, injection, session bugs), and Defensive Remediation Architect (executive risk scorecard, CVSS matrix & production code patches).',
+    },
     {
       icon: Brain,
       title: 'Universal Reasoning v1.5 & Adaptive Thinking',

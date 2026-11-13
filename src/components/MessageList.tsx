@@ -45,14 +45,31 @@ function ThinkingTrace({
 
   if (!thoughts && !isThinkingActive) return null;
 
+  const isSwarm = thoughts.includes('🐝') || thoughts.includes('Swarm Node');
+  const isSecuritySwarm = thoughts.includes('🛡️') || thoughts.includes('Security Swarm');
+
   const label = isThinkingActive
-    ? 'Reasoning in progress'
-    : thinkingMs !== undefined
-      ? `Thought for ${formatDurationMs(thinkingMs)}`
-      : 'Reasoning trace';
+    ? isSecuritySwarm
+      ? '🛡️ Security Swarm vulnerability audit in progress...'
+      : isSwarm
+        ? '🐝 Swarm multi-agent consensus in progress...'
+        : 'Reasoning in progress'
+    : isSecuritySwarm
+      ? `🛡️ Security Swarm Audit Trace ${thinkingMs !== undefined ? `(${formatDurationMs(thinkingMs)})` : ''}`
+      : isSwarm
+        ? `🐝 Swarm Multi-Agent Deliberation ${thinkingMs !== undefined ? `(${formatDurationMs(thinkingMs)})` : ''}`
+        : thinkingMs !== undefined
+          ? `Thought for ${formatDurationMs(thinkingMs)}`
+          : 'Reasoning trace';
+
+  const containerClasses = isSecuritySwarm
+    ? 'border-emerald-300/80 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20'
+    : isSwarm
+      ? 'border-amber-300/80 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/20'
+      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60';
 
   return (
-    <div className="mb-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 overflow-hidden">
+    <div className={`mb-3 rounded-lg border overflow-hidden ${containerClasses}`}>
       <button
         type="button"
         onClick={() => {

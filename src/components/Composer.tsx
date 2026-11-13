@@ -8,6 +8,7 @@ import {
   Mic,
   MicOff,
   Paperclip,
+  ShieldCheck,
   Square,
   X,
 } from 'lucide-react';
@@ -469,6 +470,38 @@ export function Composer({
                 <span>Search</span>
               </button>
 
+              {/* Swarm Multi-Agent quick-toggle button */}
+              <button
+                type="button"
+                onClick={() => onEngineRouteChange(engineRoute === 'swarm' ? 'auto' : 'swarm')}
+                aria-pressed={engineRoute === 'swarm'}
+                title="Swarm Multi-Agent: Lead Architect, Adversarial Critic & Synthesizer"
+                className={`min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-medium border inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                  engineRoute === 'swarm'
+                    ? 'border-amber-500/70 bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 shadow-2xs font-semibold'
+                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/90'
+                }`}
+              >
+                <span className="text-xs">🐝</span>
+                <span>Swarm</span>
+              </button>
+
+              {/* Security Swarm quick-toggle button */}
+              <button
+                type="button"
+                onClick={() => onEngineRouteChange(engineRoute === 'security-swarm' ? 'auto' : 'security-swarm')}
+                aria-pressed={engineRoute === 'security-swarm'}
+                title="Security Swarm: Web App & Website Vulnerability Hunter & Code Hardening"
+                className={`min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-medium border inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  engineRoute === 'security-swarm'
+                    ? 'border-emerald-500/70 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 shadow-2xs font-semibold'
+                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/90'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Security Swarm</span>
+              </button>
+
               {/* Inference engine selector */}
               <label htmlFor="engine-route-select" className="sr-only">
                 Inference engine
@@ -480,10 +513,12 @@ export function Composer({
                 onChange={(e) => onEngineRouteChange(e.target.value as EngineRoute)}
                 className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="auto">Auto</option>
+                <option value="auto">Auto Engine</option>
+                <option value="swarm">🐝 Swarm Intelligence</option>
+                <option value="security-swarm">🛡️ Security Swarm (Auditor)</option>
                 <option value="tree-of-thought">Tree-of-Thought</option>
                 <option value="deep-verify">2-Pass Verify</option>
-                <option value="fast-lite">Lite</option>
+                <option value="fast-lite">Fast Lite</option>
                 {engineStatus?.openWeightsConfigured && (
                   <option value="open-weights">
                     {engineStatus.openWeightsModel || 'Open-Weights'}

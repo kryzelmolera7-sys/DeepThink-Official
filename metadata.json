@@ -1,6 +1,6 @@
 {
   "name": "DeepThink 1",
-  "description": "DeepThink v1.5 is an upgraded universal reasoning, software architecture, and multimodal LLM workspace with visible thinking traces, Tree-of-Thought exploration, live web grounding, and interactive artifact canvas.",
+  "description": "DeepThink v1.5 is an upgraded universal reasoning, multi-agent SWARM consensus, Security Swarm web vulnerability auditor, and multimodal LLM workspace with visible thinking traces, Tree-of-Thought exploration, live web grounding, and interactive artifact canvas.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -21,11 +21,17 @@ export function WelcomeScreen({ onSelectStarter }: WelcomeScreenProps) {
             </h1>
           </div>
           <p className="text-sm sm:text-[15px] leading-relaxed text-slate-600 dark:text-slate-400 max-w-xl mx-auto text-balance">
-            Next-generation universal reasoning with Tree-of-Thought exploration,
-            interactive code & artifact canvas, 7 specialized domains, live web
-            grounding, and voice interaction.
+            Multi-agent consensus Swarm, Security Swarm web vulnerability auditor,
+            Tree-of-Thought exploration, interactive code & artifact canvas, 7
+            specialized domains, live web grounding, and voice interaction.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800/80">
+              🐝 Multi-Agent Swarm
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800/80">
+              🛡️ Security Swarm
+            </span>
             <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
               Tree-of-Thought
             </span>
@@ -34,9 +40,6 @@ export function WelcomeScreen({ onSelectStarter }: WelcomeScreenProps) {
             </span>
             <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
               Voice Dictation & Audio
-            </span>
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
-              7 Specialized Domains
             </span>
           </div>
         </div>

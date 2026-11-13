@@ -138,12 +138,18 @@ export function formatDurationMs(ms: number): string {
 
 export function isQuotaOrRateLimitError(err: unknown): boolean {
   const text = err instanceof Error ? err.message : String(err ?? '');
+  const lower = text.toLowerCase();
   return (
     text.includes('429') ||
+    text.includes('503') ||
     text.includes('RESOURCE_EXHAUSTED') ||
-    text.toLowerCase().includes('quota') ||
-    text.toLowerCase().includes('too many requests') ||
-    text.toLowerCase().includes('rate limit')
+    text.includes('UNAVAILABLE') ||
+    lower.includes('quota') ||
+    lower.includes('too many requests') ||
+    lower.includes('rate limit') ||
+    lower.includes('high demand') ||
+    lower.includes('overloaded') ||
+    lower.includes('try again later')
   );
 }
 

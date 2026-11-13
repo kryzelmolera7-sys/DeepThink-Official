@@ -9,11 +9,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import type { EngineRoute } from '../types/chat';
+
 interface TopBarProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   threadTitle: string;
   hasCustomSystemPrompt: boolean;
+  engineRoute?: EngineRoute;
   onOpenSystemPrompt: () => void;
   onOpenCapabilities: () => void;
   onExportMarkdown: () => void;
@@ -26,6 +29,7 @@ export function TopBar({
   onToggleSidebar,
   threadTitle,
   hasCustomSystemPrompt,
+  engineRoute,
   onOpenSystemPrompt,
   onOpenCapabilities,
   onExportMarkdown,
@@ -58,9 +62,19 @@ export function TopBar({
           <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">
             /
           </span>
-          <span className="text-slate-600 dark:text-slate-300 truncate max-w-[180px] sm:max-w-[320px]">
+          <span className="text-slate-600 dark:text-slate-300 truncate max-w-[160px] sm:max-w-[280px]">
             {threadTitle}
           </span>
+          {engineRoute === 'swarm' && (
+            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800/80 whitespace-nowrap">
+              <span>🐝</span> Swarm Active
+            </span>
+          )}
+          {engineRoute === 'security-swarm' && (
+            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800/80 whitespace-nowrap">
+              <span>🛡️</span> Security Swarm
+            </span>
+          )}
         </div>
       </div>
 

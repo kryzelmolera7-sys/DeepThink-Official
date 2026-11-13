@@ -11,8 +11,10 @@ export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 
 export type EngineRoute =
   | 'auto'
-  | 'deep-verify'
+  | 'swarm'
+  | 'security-swarm'
   | 'tree-of-thought'
+  | 'deep-verify'
   | 'fast-lite'
   | 'open-weights';
 

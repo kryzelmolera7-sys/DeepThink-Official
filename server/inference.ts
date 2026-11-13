@@ -380,6 +380,36 @@ export async function streamUniversalResponse(
   const contents = buildGeminiContents(body.messages);
   const detectedUrls = extractUrlsFromText(lastUserText);
 
+  if (body.engineRoute === 'swarm') {
+    await runSwarmResponse({
+      ai,
+      contents,
+      systemInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      profileShortLabel: profile.shortLabel,
+      emit,
+      signal,
+    });
+    return;
+  }
+
+  if (body.engineRoute === 'security-swarm') {
+    await runSecuritySwarmResponse({
+      ai,
+      contents,
+      systemInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      profileShortLabel: profile.shortLabel,
+      emit,
+      signal,
+    });
+    return;
+  }
+
   if (body.engineRoute === 'tree-of-thought') {
     await runTreeOfThoughtResponse({
       ai,
@@ -916,6 +946,499 @@ async function runTreeOfThoughtResponse(params: {
         metrics: {
           elapsedMs: Date.now() - startedAt,
           engineLabel: `DeepThink v1.5 · ${profileShortLabel}`,
+        },
+      });
+      return;
+    }
+    throw new Error(formatInferenceError(err));
+  }
+}
+
+async function runSwarmResponse(params: {
+  ai: GoogleGenAI;
+  contents: Content[];
+  systemInstruction: string;
+  effort: ReasoningEffort;
+  useWebSearch: boolean;
+  detectedUrls: string[];
+  profileShortLabel: string;
+  emit: SseEmitter;
+  signal: AbortSignal;
+}): Promise<void> {
+  const {
+    ai,
+    contents,
+    systemInstruction,
+    effort,
+    useWebSearch,
+    detectedUrls,
+    profileShortLabel,
+    emit,
+    signal,
+  } = params;
+
+  const startedAt = Date.now();
+  let architectDraft = '';
+  let criticDraft = '';
+  let usedModel = UNIVERSAL_MODEL;
+  let capturedSources: GroundingSource[] = [];
+
+  emit('thought', {
+    delta:
+      '🐝 **[Swarm Node 1 · Lead Architect]** Initializing swarm consensus cluster & decomposing core problem topology...\n',
+  });
+
+  const architectInstruction =
+    `${systemInstruction}\n\n` +
+    'SWARM PROTOCOL — AGENT 1 (LEAD ARCHITECT):\n' +
+    'You are the Lead Architect in a multi-agent consensus swarm.\n' +
+    'Analyze this request systematically:\n' +
+    '1. Deconstruct the requirements, goals, and implicit constraints.\n' +
+    '2. Outline the optimal architectural strategy, data structures, and algorithms.\n' +
+    '3. Formulate the core technical blueprint and highlight non-obvious engineering trade-offs.\n' +
+    'Be rigorous, concrete, and comprehensive.';
+
+  const captureArchitect: SseEmitter = (event, payload) => {
+    if (event === 'thought') {
+      emit('thought', payload);
+    } else if (event === 'text') {
+      const delta = (payload as { delta?: string }).delta ?? '';
+      architectDraft += delta;
+      emit('thought', { delta });
+    } else if (event === 'sources') {
+      const s = (payload as { sources?: GroundingSource[] }).sources ?? [];
+      capturedSources = s;
+      emit('sources', payload);
+    }
+  };
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: UNIVERSAL_MODEL,
+      contents,
+      systemInstruction: architectInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Swarm · Architect)`,
+      emit: captureArchitect,
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted || !isQuotaOrRateLimitError(err)) {
+      throw new Error(formatInferenceError(err));
+    }
+    usedModel = FALLBACK_LITE_MODEL;
+    architectDraft = '';
+    await runGeminiStreamAttempt({
+      ai,
+      model: FALLBACK_LITE_MODEL,
+      contents,
+      systemInstruction: architectInstruction,
+      effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Swarm Architect Lite)`,
+      emit: captureArchitect,
+      signal,
+    });
+  }
+
+  if (signal.aborted) return;
+
+  emit('thought', {
+    delta:
+      '\n\n🐝 **[Swarm Node 2 · Adversarial Critic]** Stress-testing architectural invariants, boundary conditions & failure modes...\n',
+  });
+
+  const criticContents: Content[] = [
+    ...contents,
+    {
+      role: 'model',
+      parts: [{ text: `[Architect Blueprint]:\n${architectDraft}` }],
+    },
+    {
+      role: 'user',
+      parts: [
+        {
+          text:
+            'SWARM PROTOCOL — AGENT 2 (ADVERSARIAL CRITIC):\n' +
+            'Review the Lead Architect\'s blueprint above. Conduct an aggressive, adversarial critique:\n' +
+            '1. Identify hidden edge cases, invariant violations, and failure modes.\n' +
+            '2. Point out performance bottlenecks, scaling cliffs, race conditions, or unhandled errors.\n' +
+            '3. Propose necessary corrections, guardrails, and hardening strategies for the Synthesizer.',
+        },
+      ],
+    },
+  ];
+
+  const captureCritic: SseEmitter = (event, payload) => {
+    if (event === 'thought') {
+      emit('thought', payload);
+    } else if (event === 'text') {
+      const delta = (payload as { delta?: string }).delta ?? '';
+      criticDraft += delta;
+      emit('thought', { delta });
+    } else if (event === 'sources') {
+      const s = (payload as { sources?: GroundingSource[] }).sources ?? [];
+      capturedSources = s;
+      emit('sources', payload);
+    }
+  };
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: usedModel,
+      contents: criticContents,
+      systemInstruction,
+      effort: effort === 'xhigh' ? 'high' : effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Swarm · Critic)`,
+      emit: captureCritic,
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) return;
+    if (isQuotaOrRateLimitError(err)) {
+      usedModel = FALLBACK_LITE_MODEL;
+      criticDraft = 'Proceeding to consensus synthesis with primary architectural invariants.';
+    } else {
+      throw new Error(formatInferenceError(err));
+    }
+  }
+
+  if (signal.aborted) return;
+
+  emit('thought', {
+    delta:
+      '\n\n🐝 **[Swarm Consensus Engine]** Integrating agent perspectives & synthesizing optimal verified solution...\n',
+  });
+
+  const synthesisContents: Content[] = [
+    ...contents,
+    {
+      role: 'model',
+      parts: [
+        {
+          text:
+            `[Agent 1 · Lead Architect Blueprint]:\n${architectDraft}\n\n` +
+            `[Agent 2 · Adversarial Critique & Guardrails]:\n${criticDraft}`,
+        },
+      ],
+    },
+    {
+      role: 'user',
+      parts: [
+        {
+          text:
+            'SWARM PROTOCOL — AGENT 3 (CONSENSUS SYNTHESIZER):\n' +
+            'Synthesize the definitive, production-grade final response to the user query.\n' +
+            'Incorporate the Lead Architect\'s blueprint and fully resolve all objections and edge cases raised by the Adversarial Critic.\n' +
+            'Provide the complete, authoritative, and elegant final answer directly for the user without internal meta-commentary.',
+        },
+      ],
+    },
+  ];
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: usedModel,
+      contents: synthesisContents,
+      systemInstruction,
+      effort: effort === 'xhigh' ? 'high' : effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Swarm Consensus)`,
+      emit: (event, payload) => {
+        if (event === 'thought') {
+          emit('thought', payload);
+        } else if (event === 'text') {
+          emit('text', payload);
+        } else if (event === 'done') {
+          const m = (payload as { metrics?: Record<string, unknown> }).metrics ?? {};
+          emit('done', {
+            metrics: {
+              ...m,
+              elapsedMs: Date.now() - startedAt,
+            },
+          });
+        }
+      },
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) return;
+    if (isQuotaOrRateLimitError(err) && architectDraft.trim()) {
+      emit('text', { delta: architectDraft });
+      if (capturedSources.length > 0) {
+        emit('sources', { sources: capturedSources });
+      }
+      emit('done', {
+        metrics: {
+          elapsedMs: Date.now() - startedAt,
+          engineLabel: `DeepThink v1.5 · ${profileShortLabel}`,
+        },
+      });
+      return;
+    }
+    throw new Error(formatInferenceError(err));
+  }
+}
+
+async function runSecuritySwarmResponse(params: {
+  ai: GoogleGenAI;
+  contents: Content[];
+  systemInstruction: string;
+  effort: ReasoningEffort;
+  useWebSearch: boolean;
+  detectedUrls: string[];
+  profileShortLabel: string;
+  emit: SseEmitter;
+  signal: AbortSignal;
+}): Promise<void> {
+  const {
+    ai,
+    contents,
+    systemInstruction,
+    effort,
+    useWebSearch,
+    detectedUrls,
+    profileShortLabel,
+    emit,
+    signal,
+  } = params;
+
+  const startedAt = Date.now();
+  let surfaceDraft = '';
+  let vulnDraft = '';
+  let usedModel = UNIVERSAL_MODEL;
+  let capturedSources: GroundingSource[] = [];
+
+  emit('thought', {
+    delta:
+      '🛡️ **[Security Swarm · Agent 1: Threat Surface Modeler]** Mapping web application entry points, auth perimeters, and input boundaries...\n',
+  });
+
+  const surfaceInstruction =
+    `${systemInstruction}\n\n` +
+    'SECURITY SWARM PROTOCOL — AGENT 1 (THREAT SURFACE MODELER):\n' +
+    'You are the Threat Modeler in the DeepThink Security Swarm. Your mission is defensive security reconnaissance and architectural threat modeling:\n' +
+    '1. Map all external attack surfaces, user-controlled input vectors, REST/GraphQL endpoints, and WebSocket channels.\n' +
+    '2. Audit authentication, session handling, token storage (cookies vs. localStorage), and authorization boundaries.\n' +
+    '3. Identify data flows, database interaction boundaries, third-party integrations, and file upload pipelines.\n' +
+    '4. Categorize risk exposure using STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege).\n' +
+    'Be rigorous, methodical, and purely defensive.';
+
+  const captureSurface: SseEmitter = (event, payload) => {
+    if (event === 'thought') {
+      emit('thought', payload);
+    } else if (event === 'text') {
+      const delta = (payload as { delta?: string }).delta ?? '';
+      surfaceDraft += delta;
+      emit('thought', { delta });
+    } else if (event === 'sources') {
+      const s = (payload as { sources?: GroundingSource[] }).sources ?? [];
+      capturedSources = s;
+      emit('sources', payload);
+    }
+  };
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: UNIVERSAL_MODEL,
+      contents,
+      systemInstruction: surfaceInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      engineLabel: `DeepThink v1.5 · Security Swarm (Surface Modeler)`,
+      emit: captureSurface,
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted || !isQuotaOrRateLimitError(err)) {
+      throw new Error(formatInferenceError(err));
+    }
+    usedModel = FALLBACK_LITE_MODEL;
+    surfaceDraft = '';
+    await runGeminiStreamAttempt({
+      ai,
+      model: FALLBACK_LITE_MODEL,
+      contents,
+      systemInstruction: surfaceInstruction,
+      effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · Security Swarm (Surface Modeler Lite)`,
+      emit: captureSurface,
+      signal,
+    });
+  }
+
+  if (signal.aborted) return;
+
+  emit('thought', {
+    delta:
+      '\n\n🛡️ **[Security Swarm · Agent 2: Vulnerability Hunter]** Performing in-depth OWASP Top 10, CWE patterns, and business logic vulnerability audit...\n',
+  });
+
+  const vulnContents: Content[] = [
+    ...contents,
+    {
+      role: 'model',
+      parts: [{ text: `[Threat Surface & Architecture Analysis]:\n${surfaceDraft}` }],
+    },
+    {
+      role: 'user',
+      parts: [
+        {
+          text:
+            'SECURITY SWARM PROTOCOL — AGENT 2 (VULNERABILITY HUNTER):\n' +
+            'Perform a rigorous defensive vulnerability audit of the web application / code against OWASP Top 10 and CWEs:\n' +
+            '- A01 Broken Access Control (IDOR, privilege escalation, unauthenticated route exposure)\n' +
+            '- A02 Cryptographic Failures (weak hashing, plaintext secrets, insecure token transmission)\n' +
+            '- A03 Injection (SQLi, NoSQLi, Command Injection, Server-Side Template Injection, XSS)\n' +
+            '- A04 Insecure Design (missing rate limiting, race conditions, business logic bypasses)\n' +
+            '- A05 Security Misconfiguration (permissive CORS, missing CSP/HSTS/X-Frame-Options, debug endpoints)\n' +
+            '- A06 Vulnerable Components & Dependencies\n' +
+            '- A07 Identification & Authentication Failures (session fixation, weak password rules, CSRF)\n' +
+            '- A08 Software & Data Integrity Failures (unsafe deserialization)\n' +
+            '- A09 Security Logging & Monitoring Failures\n' +
+            '- A10 Server-Side Request Forgery (SSRF)\n\n' +
+            'For every issue found, note the severity (Critical/High/Medium/Low), root cause, and where in the code/architecture it occurs.',
+        },
+      ],
+    },
+  ];
+
+  const captureVuln: SseEmitter = (event, payload) => {
+    if (event === 'thought') {
+      emit('thought', payload);
+    } else if (event === 'text') {
+      const delta = (payload as { delta?: string }).delta ?? '';
+      vulnDraft += delta;
+      emit('thought', { delta });
+    } else if (event === 'sources') {
+      const s = (payload as { sources?: GroundingSource[] }).sources ?? [];
+      capturedSources = s;
+      emit('sources', payload);
+    }
+  };
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: usedModel,
+      contents: vulnContents,
+      systemInstruction,
+      effort: effort === 'xhigh' ? 'high' : effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · Security Swarm (Vulnerability Hunter)`,
+      emit: captureVuln,
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) return;
+    if (isQuotaOrRateLimitError(err)) {
+      usedModel = FALLBACK_LITE_MODEL;
+      vulnDraft = 'Proceeding to defensive remediation with initial vulnerability findings.';
+    } else {
+      throw new Error(formatInferenceError(err));
+    }
+  }
+
+  if (signal.aborted) return;
+
+  emit('thought', {
+    delta:
+      '\n\n🛡️ **[Security Swarm · Agent 3: Defensive Remediation Architect]** Generating authoritative vulnerability matrix & hardened code patches...\n',
+  });
+
+  const remediationContents: Content[] = [
+    ...contents,
+    {
+      role: 'model',
+      parts: [
+        {
+          text:
+            `[Agent 1 · Threat Surface Model]:\n${surfaceDraft}\n\n` +
+            `[Agent 2 · Vulnerability Findings]:\n${vulnDraft}`,
+        },
+      ],
+    },
+    {
+      role: 'user',
+      parts: [
+        {
+          text:
+            'SECURITY SWARM PROTOCOL — AGENT 3 (DEFENSIVE REMEDIATION ARCHITECT):\n' +
+            'Synthesize the final, comprehensive Security Audit & Hardening Report for the user.\n' +
+            'Focus exclusively on defensive analysis, precise root causes, and production-grade remediations.\n' +
+            'Structure your report with the following clear Markdown sections:\n\n' +
+            '## 🛡️ Security Posture & Executive Scorecard\n' +
+            '- Overall Risk Score (Critical, High, Medium, Hardened)\n' +
+            '- Summary of security findings across the attack surface\n\n' +
+            '## 📋 Vulnerability Assessment Matrix\n' +
+            'Provide a Markdown table with: # | Vulnerability | Severity | OWASP Category | Affected Component | Technical Impact\n\n' +
+            '## 🔍 Detailed Vulnerability Breakdown\n' +
+            'For each vulnerability identified:\n' +
+            '- **Root Cause & Mechanics**: Exactly how and why the flaw occurs\n' +
+            '- **Risk Scenario**: Theoretical threat impact (e.g. data breach, unauthorized access, session takeover)\n' +
+            '- **Vulnerable Code Pattern**: The unsafe implementation\n\n' +
+            '## 🛠️ Hardened Code Patches & Production Remediations\n' +
+            'Provide concrete, production-ready, copy-paste drop-in code fixes with modern defensive best practices (e.g. parameterized queries, Zod schema validation, secure HTTP-only cookies, Helmet headers, CORS whitelisting, rate limiting).\n\n' +
+            '## 🛡️ Defense-in-Depth Hardening Checklist\n' +
+            '- **Immediate 24-Hour Hotfixes**: Urgent patches to apply right away\n' +
+            '- **Strategic Architectural Hardening**: Long-term defensive practices, audit logging, and automated CI/CD security scanning.',
+        },
+      ],
+    },
+  ];
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: usedModel,
+      contents: remediationContents,
+      systemInstruction,
+      effort: effort === 'xhigh' ? 'high' : effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · Security Swarm (Hardened Audit)`,
+      emit: (event, payload) => {
+        if (event === 'thought') {
+          emit('thought', payload);
+        } else if (event === 'text') {
+          emit('text', payload);
+        } else if (event === 'done') {
+          const m = (payload as { metrics?: Record<string, unknown> }).metrics ?? {};
+          emit('done', {
+            metrics: {
+              ...m,
+              elapsedMs: Date.now() - startedAt,
+            },
+          });
+        }
+      },
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) return;
+    if (isQuotaOrRateLimitError(err) && surfaceDraft.trim()) {
+      emit('text', { delta: surfaceDraft });
+      if (capturedSources.length > 0) {
+        emit('sources', { sources: capturedSources });
+      }
+      emit('done', {
+        metrics: {
+          elapsedMs: Date.now() - startedAt,
+          engineLabel: `DeepThink v1.5 · Security Swarm`,
         },
       });
       return;
