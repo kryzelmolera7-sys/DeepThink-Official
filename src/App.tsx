@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArchitectureModal } from './components/ArchitectureModal';
+import { ArtifactCanvasModal } from './components/ArtifactCanvasModal';
+import { CapabilitiesModal } from './components/CapabilitiesModal';
 import { Composer } from './components/Composer';
 import { MessageList } from './components/MessageList';
 import { Sidebar } from './components/Sidebar';
@@ -8,6 +10,7 @@ import { TopBar } from './components/TopBar';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { DOMAIN_PROFILES } from './shared/models';
 import type {
+  ArtifactItem,
   Attachment,
   ChatMessage,
   ChatThread,
@@ -23,7 +26,9 @@ import { formatInferenceError, parseSseBuffer } from './utils/streamParser';
 import {
   createThread,
   deriveThreadTitle,
+  exportThreadToJson,
   exportThreadToMarkdown,
+  forkThread,
 } from './utils/threadStorage';
 
 const THREADS_KEY = 'deepthink1.threads.v1';
@@ -94,6 +99,8 @@ export default function App() {
 
   const [systemModalOpen, setSystemModalOpen] = useState(false);
   const [architectureModalOpen, setArchitectureModalOpen] = useState(false);
+  const [capabilitiesModalOpen, setCapabilitiesModalOpen] = useState(false);
+  const [activeArtifact, setActiveArtifact] = useState<ArtifactItem | null>(null);
 
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
@@ -493,12 +500,44 @@ export default function App() {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
-    link.download = `${slug || 'deepthink-1-thread'}.md`;
+    link.download = `${slug || 'deepthink-v1.5-thread'}.md`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
   }, [activeThread]);
+
+  const handleExportJson = useCallback(() => {
+    if (!activeThread || activeThread.messages.length === 0) return;
+    const jsonStr = exportThreadToJson(activeThread);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const slug = activeThread.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    link.download = `${slug || 'deepthink-v1.5-thread'}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, [activeThread]);
+
+  const handleForkThread = useCallback(
+    (upToMessageId: string) => {
+      if (!activeThread) return;
+      if (isStreaming) {
+        abortControllerRef.current?.abort();
+        setIsStreaming(false);
+      }
+      const branched = forkThread(activeThread, upToMessageId);
+      setThreads((prev) => [branched, ...prev]);
+      setActiveThreadId(branched.id);
+    },
+    [activeThread, isStreaming]
+  );
 
   if (!activeThread) return null;
 
@@ -518,6 +557,7 @@ export default function App() {
         onNewThread={handleNewThread}
         onDeleteThread={handleDeleteThread}
         onOpenArchitecture={() => setArchitectureModalOpen(true)}
+        onOpenCapabilities={() => setCapabilitiesModalOpen(true)}
         isDark={isDark}
         onToggleTheme={() => setIsDark((d) => !d)}
       />
@@ -529,7 +569,9 @@ export default function App() {
           threadTitle={activeThread.title}
           hasCustomSystemPrompt={Boolean(activeThread.customSystemPrompt.trim())}
           onOpenSystemPrompt={() => setSystemModalOpen(true)}
+          onOpenCapabilities={() => setCapabilitiesModalOpen(true)}
           onExportMarkdown={handleExportMarkdown}
+          onExportJson={handleExportJson}
           canExport={activeThread.messages.length > 0}
         />
 
@@ -541,6 +583,8 @@ export default function App() {
             isStreaming={isStreaming}
             onRegenerate={handleRegenerateOrRetry}
             onRetryLast={handleRegenerateOrRetry}
+            onForkThread={handleForkThread}
+            onOpenArtifact={setActiveArtifact}
           />
         )}
 
@@ -587,6 +631,16 @@ export default function App() {
         isOpen={architectureModalOpen}
         onClose={() => setArchitectureModalOpen(false)}
         engineStatus={engineStatus}
+      />
+
+      <CapabilitiesModal
+        isOpen={capabilitiesModalOpen}
+        onClose={() => setCapabilitiesModalOpen(false)}
+      />
+
+      <ArtifactCanvasModal
+        artifact={activeArtifact}
+        onClose={() => setActiveArtifact(null)}
       />
     </div>
   );

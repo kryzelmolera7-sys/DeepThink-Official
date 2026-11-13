@@ -5,6 +5,8 @@ import {
   FileAudio,
   FileText,
   Globe,
+  Mic,
+  MicOff,
   Paperclip,
   Square,
   X,
@@ -102,15 +104,89 @@ export function Composer({
   const [attachError, setAttachError] = useState<string | null>(null);
   const [effortFeedback, setEffortFeedback] = useState<string | null>(null);
   const [isEffortPulsing, setIsEffortPulsing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
       if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        // ignore
+      }
     };
   }, []);
+
+  const toggleVoiceDictation = () => {
+    if (typeof window === 'undefined') return;
+    interface SpeechWindow extends Window {
+      SpeechRecognition?: new () => {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onresult: (e: { results?: Array<Array<{ transcript?: string }>> }) => void;
+        onerror: () => void;
+        onend: () => void;
+        start: () => void;
+        stop: () => void;
+      };
+      webkitSpeechRecognition?: new () => {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onresult: (e: { results?: Array<Array<{ transcript?: string }>> }) => void;
+        onerror: () => void;
+        onend: () => void;
+        start: () => void;
+        stop: () => void;
+      };
+    }
+    const win = window as unknown as SpeechWindow;
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRec) {
+      setAttachError('Voice dictation is not supported by your current browser.');
+      return;
+    }
+
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        // ignore
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+        if (transcript) {
+          onInputChange(input.trim() ? `${input.trim()} ${transcript}` : transcript);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      setIsListening(false);
+    }
+  };
 
   const canSend =
     !isStreaming && (input.trim().length > 0 || attachments.length > 0);
@@ -273,7 +349,7 @@ export function Composer({
           {/* Prompt textarea */}
           <div className="px-4 pt-3.5 pb-2">
             <label htmlFor="deepthink-prompt" className="sr-only">
-              Ask DeepThink 1 anything
+              Ask DeepThink v1.5 anything
             </label>
             <textarea
               id="deepthink-prompt"
@@ -281,7 +357,7 @@ export function Composer({
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask DeepThink 1 anything — reason, write code, analyze images/PDFs, or research the web..."
+              placeholder="Ask DeepThink v1.5 anything — reason, write code, analyze images/PDFs/audio, or research..."
               className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none max-h-48"
             />
           </div>
@@ -306,6 +382,28 @@ export function Composer({
               >
                 <Paperclip className="w-3.5 h-3.5 shrink-0" />
                 <span className="hidden sm:inline">Attach</span>
+              </button>
+
+              {/* Voice dictation button */}
+              <button
+                type="button"
+                onClick={toggleVoiceDictation}
+                aria-label={isListening ? 'Stop voice dictation' : 'Dictate with voice'}
+                aria-pressed={isListening}
+                className={`min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  isListening
+                    ? 'bg-red-50 dark:bg-red-950/70 text-red-600 dark:text-red-400 border border-red-500/50 animate-pulse'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/90'
+                }`}
+              >
+                {isListening ? (
+                  <MicOff className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" />
+                ) : (
+                  <Mic className="w-3.5 h-3.5 shrink-0" />
+                )}
+                <span className="hidden sm:inline">
+                  {isListening ? 'Listening…' : 'Voice'}
+                </span>
               </button>
 
               {/* Domain Profile select */}
@@ -383,6 +481,7 @@ export function Composer({
                 className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="auto">Auto</option>
+                <option value="tree-of-thought">Tree-of-Thought</option>
                 <option value="deep-verify">2-Pass Verify</option>
                 <option value="fast-lite">Lite</option>
                 {engineStatus?.openWeightsConfigured && (

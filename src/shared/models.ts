@@ -2,26 +2,26 @@ import { DomainProfile, DomainProfileId, ReasoningEffort, StarterPrompt } from '
 
 export const DEEPTHINK_IDENTITY_DIRECTIVE = [
   'IDENTITY RULE (MANDATORY):',
-  'Your name is DeepThink 1. You are DeepThink 1, a universal reasoning and multimodal large language model.',
-  'When asked "who are you", "what is your name", "what model are you", "who created you", or any question about your identity or underlying model, always respond that you are DeepThink 1.',
+  'Your name is DeepThink v1.5. You are DeepThink v1.5, a state-of-the-art universal reasoning, software architecture, and multimodal large language model.',
+  'When asked "who are you", "what is your name", "what model are you", "who created you", or any question about your identity or underlying model, always respond that you are DeepThink v1.5.',
   'NEVER claim to be Gemini, Google, Hydrogen, Argon, Carbon, Flash, or any other underlying provider or base model name.',
 ].join(' ');
 
 export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
   universal: {
     id: 'universal',
-    name: 'DeepThink 1 Universal',
+    name: 'DeepThink v1.5 Universal',
     shortLabel: 'Universal',
     description:
       'Balanced generalist intelligence across reasoning, writing, synthesis, coding, and multimodal tasks.',
     defaultEffort: 'high',
     defaultWebSearch: false,
     systemInstruction:
-      'Reason rigorously, verify assumptions before asserting facts, structure answers clearly with Markdown when helpful, and remain concise and direct.',
+      'Operate in DeepThink v1.5 Universal mode. Reason rigorously, verify assumptions before asserting facts, structure answers clearly with Markdown when helpful, and remain concise, insightful, and direct.',
   },
   reasoning: {
     id: 'reasoning',
-    name: 'DeepThink 1 Reasoner',
+    name: 'DeepThink v1.5 Reasoner',
     shortLabel: 'Reasoner',
     description:
       'Deep analytical decomposition for mathematical proofs, logic puzzles, formal verification, and strategy.',
@@ -32,7 +32,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
   },
   coding: {
     id: 'coding',
-    name: 'DeepThink 1 Code & Systems',
+    name: 'DeepThink v1.5 Code & Architecture',
     shortLabel: 'Code',
     description:
       'Production software engineering, distributed architecture, debugging, SQL optimization, and code review.',
@@ -43,7 +43,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
   },
   research: {
     id: 'research',
-    name: 'DeepThink 1 Research',
+    name: 'DeepThink v1.5 Deep Research',
     shortLabel: 'Research',
     description:
       'Web-grounded research, comparative literature synthesis, fact verification, and URL analysis.',
@@ -54,7 +54,7 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
   },
   multimodal: {
     id: 'multimodal',
-    name: 'DeepThink 1 Vision & Audio',
+    name: 'DeepThink v1.5 Vision & Media',
     shortLabel: 'Multimodal',
     description:
       'Inspection of images, architecture diagrams, PDFs, audio clips, and structured documents.',
@@ -62,6 +62,28 @@ export const DOMAIN_PROFILES: Record<DomainProfileId, DomainProfile> = {
     defaultWebSearch: false,
     systemInstruction:
       'Operate in Multimodal Analysis mode. Examine attached images, audio, PDFs, and text files systematically, extract exact details rather than guessing, and summarize findings cleanly.',
+  },
+  data: {
+    id: 'data',
+    name: 'DeepThink v1.5 Data & Quantitative',
+    shortLabel: 'Data',
+    description:
+      'Statistical modeling, CSV/tabular data extraction, exploratory data analysis, and mathematical projections.',
+    defaultEffort: 'high',
+    defaultWebSearch: false,
+    systemInstruction:
+      'Operate in Data & Quantitative Analyst mode. Parse tabular data, calculate exact statistics and distributions, identify anomalies, and structure conclusions with quantitative metrics and markdown tables.',
+  },
+  security: {
+    id: 'security',
+    name: 'DeepThink v1.5 Security Auditor',
+    shortLabel: 'Security',
+    description:
+      'Threat modeling, invariant testing, vulnerability analysis, race condition audits, and zero-trust verification.',
+    defaultEffort: 'xhigh',
+    defaultWebSearch: false,
+    systemInstruction:
+      'Operate in Security & Systems Auditor mode. Audit designs and code for OWASP vulnerabilities, authorization bypasses, race conditions, memory bounds, and denial-of-service vectors with actionable remediation steps.',
   },
 };
 
@@ -90,22 +112,42 @@ export const REASONING_EFFORTS: {
 export const STARTER_PROMPTS: StarterPrompt[] = [
   {
     id: 'starter-reasoning',
-    category: 'Reasoning & Math',
-    title: 'Compare Raft and Paxos invariants',
+    category: 'Reasoning & Proof',
+    title: 'Formal verification of Raft leader invariants',
     prompt:
-      'Compare Raft and Multi-Paxos leader election and log replication invariants. Explain where Raft simplifies reasoning and outline one subtle safety edge case in each protocol.',
+      'Compare Raft and Multi-Paxos leader election and log replication invariants. Detail where Raft simplifies reasoning and outline subtle safety edge cases in partitioned quorums.',
     profile: 'reasoning',
     effort: 'xhigh',
     useWebSearch: false,
   },
   {
     id: 'starter-coding',
-    category: 'Code & Systems',
-    title: 'Design a lock-free rate limiter in TypeScript',
+    category: 'Code & Architecture',
+    title: 'Lock-free rate limiter with TypeScript & tests',
     prompt:
       'Write a clean, production-ready sliding-window rate limiter in TypeScript with deterministic unit tests, O(1) amortized checks, and memory bounding for high-cardinality keys.',
     profile: 'coding',
     effort: 'high',
+    useWebSearch: false,
+  },
+  {
+    id: 'starter-data',
+    category: 'Data & Quantitative',
+    title: 'Statistical analysis of latency distribution',
+    prompt:
+      'Given p50, p90, p99, and p99.9 latency metrics with multi-modal spikes, outline how to fit an extreme value distribution (Pareto/Weibull), detect tail degradation, and design an anomaly alerting policy.',
+    profile: 'data',
+    effort: 'high',
+    useWebSearch: false,
+  },
+  {
+    id: 'starter-security',
+    category: 'Security & Systems',
+    title: 'Threat model a zero-trust OAuth session broker',
+    prompt:
+      'Perform a comprehensive threat model (STRIDE) for a microservice OAuth session broker handling refresh token rotation, PKCE, and distributed session revocation under network split conditions.',
+    profile: 'security',
+    effort: 'xhigh',
     useWebSearch: false,
   },
   {
@@ -121,7 +163,7 @@ export const STARTER_PROMPTS: StarterPrompt[] = [
   {
     id: 'starter-universal',
     category: 'Universal Synthesis',
-    title: 'Draft a rigorous product RFC',
+    title: 'Draft a rigorous product RFC for local-first sync',
     prompt:
       'Draft a concise 1-page engineering RFC for adding end-to-end encrypted collaborative notes to a local-first web app, covering key rotation, conflict resolution (CRDTs), and failure modes.',
     profile: 'universal',

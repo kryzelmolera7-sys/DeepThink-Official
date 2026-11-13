@@ -79,10 +79,10 @@ test('isDirectIdentityQuery matches identity questions and ignores general promp
   assert.equal(isDirectIdentityQuery('Explain Paxos vs Raft'), false);
 });
 
-test('sanitizeIdentitySelfReference replaces underlying model self-references with DeepThink 1', () => {
+test('sanitizeIdentitySelfReference replaces underlying model self-references with DeepThink v1.5', () => {
   const raw = 'I am Gemini 4 Hydrogen, a large language model built by Google.';
   const sanitized = sanitizeIdentitySelfReference(raw);
-  assert.ok(sanitized.includes('DeepThink 1'));
+  assert.ok(sanitized.includes('DeepThink v1.5'));
   assert.ok(!sanitized.includes('Gemini'));
   assert.ok(!sanitized.includes('Google'));
 });

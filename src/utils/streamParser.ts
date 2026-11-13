@@ -215,15 +215,15 @@ export function isDirectIdentityQuery(prompt: string): boolean {
 export function sanitizeIdentitySelfReference(text: string): string {
   return text
     .replace(
-      /\bI(?:'m| am) (?:Gemini(?: 4 Hydrogen| 3\.1 Flash[- ]Lite)?|a large language model)(?:,?\s*(?:built|trained|created|developed) by Google)?/gi,
-      'I am DeepThink 1, a universal reasoning and multimodal model'
+      /\bI(?:'m| am) (?:Gemini(?: 4 Hydrogen| 3\.1 Flash[- ]Lite)?|DeepThink 1|a large language model)(?:,?\s*(?:built|trained|created|developed) by Google)?/gi,
+      'I am DeepThink v1.5, a universal reasoning and multimodal model'
     )
     .replace(
-      /\b(?:Gemini 4 Hydrogen|Gemini 3\.1 Flash[- ]Lite|Gemini)\b(?=\s+(?:model|LLM|assistant|here))/gi,
-      'DeepThink 1'
+      /\b(?:Gemini 4 Hydrogen|Gemini 3\.1 Flash[- ]Lite|Gemini|DeepThink 1)\b(?=\s+(?:model|LLM|assistant|here))/gi,
+      'DeepThink v1.5'
     )
     .replace(
       /\b(?:built|trained|created|developed) by Google\b/gi,
-      'designed as DeepThink 1'
+      'designed as DeepThink v1.5'
     );
 }

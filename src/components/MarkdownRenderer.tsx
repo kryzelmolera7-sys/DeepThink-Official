@@ -1,13 +1,31 @@
 import { useState, type ReactNode } from 'react';
 import { marked, type Token, type Tokens } from 'marked';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Download, Eye } from 'lucide-react';
+import type { ArtifactItem } from '../types/chat';
 
 interface MarkdownRendererProps {
   content: string;
+  onOpenArtifact?: (artifact: ArtifactItem) => void;
 }
 
-function CodeBlock({ lang, code }: { lang?: string; code: string }) {
+function CodeBlock({
+  lang,
+  code,
+  onOpenArtifact,
+}: {
+  lang?: string;
+  code: string;
+  onOpenArtifact?: (artifact: ArtifactItem) => void;
+}) {
   const [copied, setCopied] = useState(false);
+  const cleanLang = (lang || 'code').trim().toLowerCase();
+
+  const isPreviewable =
+    cleanLang === 'html' ||
+    cleanLang === 'svg' ||
+    code.trim().startsWith('<svg') ||
+    code.trim().startsWith('<!DOCTYPE html>') ||
+    code.trim().startsWith('<html');
 
   const handleCopy = async () => {
     try {
@@ -19,28 +37,90 @@ function CodeBlock({ lang, code }: { lang?: string; code: string }) {
     }
   };
 
+  const handleDownload = () => {
+    let ext = 'txt';
+    if (cleanLang === 'html') ext = 'html';
+    else if (cleanLang === 'svg') ext = 'svg';
+    else if (cleanLang === 'ts' || cleanLang === 'typescript') ext = 'ts';
+    else if (cleanLang === 'tsx') ext = 'tsx';
+    else if (cleanLang === 'js' || cleanLang === 'javascript') ext = 'js';
+    else if (cleanLang === 'jsx') ext = 'jsx';
+    else if (cleanLang === 'py' || cleanLang === 'python') ext = 'py';
+    else if (cleanLang === 'sql') ext = 'sql';
+    else if (cleanLang === 'json') ext = 'json';
+    else if (cleanLang === 'css') ext = 'css';
+
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `deepthink-code-${Date.now()}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePreview = () => {
+    if (!onOpenArtifact) return;
+    const type = cleanLang === 'svg' || code.trim().startsWith('<svg') ? 'svg' : 'html';
+    onOpenArtifact({
+      id: `art-${Date.now()}`,
+      title: `${cleanLang.toUpperCase()} Artifact`,
+      language: cleanLang,
+      content: code,
+      type,
+    });
+  };
+
   return (
-    <div className="my-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-950 text-slate-100 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900/90 text-xs text-slate-400">
-        <span className="font-mono">{lang?.trim() || 'code'}</span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white transition-colors py-1 px-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 whitespace-nowrap shrink-0"
-          aria-label="Copy code block"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy</span>
-            </>
+    <div className="my-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-950 text-slate-100 overflow-hidden shadow-xs">
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-slate-800/90 bg-slate-900/95 text-xs text-slate-400">
+        <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-slate-300">
+          {cleanLang}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {isPreviewable && onOpenArtifact && (
+            <button
+              type="button"
+              onClick={handlePreview}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-400 hover:text-blue-300 bg-blue-950/60 hover:bg-blue-900/60 border border-blue-800/80 transition-colors py-1 px-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 whitespace-nowrap shrink-0"
+              aria-label="Preview artifact in canvas"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Canvas</span>
+            </button>
           )}
-        </button>
+
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors py-1 px-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 whitespace-nowrap shrink-0"
+            aria-label="Download code snippet"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Save</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors py-1 px-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 whitespace-nowrap shrink-0"
+            aria-label="Copy code block"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
       <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed font-mono">
         <code>{code}</code>
@@ -113,7 +193,11 @@ function renderInlineTokens(tokens: Token[] | undefined, keyPrefix: string): Rea
   });
 }
 
-function renderBlockTokens(tokens: Token[], keyPrefix: string): ReactNode[] {
+function renderBlockTokens(
+  tokens: Token[],
+  keyPrefix: string,
+  onOpenArtifact?: (artifact: ArtifactItem) => void
+): ReactNode[] {
   return tokens.map((token, idx) => {
     const key = `${keyPrefix}-b-${idx}`;
     switch (token.type) {
@@ -164,7 +248,14 @@ function renderBlockTokens(tokens: Token[], keyPrefix: string): ReactNode[] {
       }
       case 'code': {
         const c = token as Tokens.Code;
-        return <CodeBlock key={key} lang={c.lang} code={c.text} />;
+        return (
+          <CodeBlock
+            key={key}
+            lang={c.lang}
+            code={c.text}
+            onOpenArtifact={onOpenArtifact}
+          />
+        );
       }
       case 'blockquote': {
         const bq = token as Tokens.Blockquote;
@@ -173,7 +264,7 @@ function renderBlockTokens(tokens: Token[], keyPrefix: string): ReactNode[] {
             key={key}
             className="my-3.5 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300"
           >
-            {renderBlockTokens(bq.tokens, key)}
+            {renderBlockTokens(bq.tokens, key, onOpenArtifact)}
           </blockquote>
         );
       }
@@ -189,7 +280,7 @@ function renderBlockTokens(tokens: Token[], keyPrefix: string): ReactNode[] {
           >
             {list.items.map((item, itemIdx) => (
               <li key={`${key}-li-${itemIdx}`} className="pl-1">
-                {renderBlockTokens(item.tokens, `${key}-li-${itemIdx}`)}
+                {renderBlockTokens(item.tokens, `${key}-li-${itemIdx}`, onOpenArtifact)}
               </li>
             ))}
           </Tag>
@@ -264,7 +355,11 @@ function renderBlockTokens(tokens: Token[], keyPrefix: string): ReactNode[] {
   });
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, onOpenArtifact }: MarkdownRendererProps) {
   const tokens = marked.lexer(content, { gfm: true, breaks: false });
-  return <div className="max-w-none break-words">{renderBlockTokens(tokens, 'md')}</div>;
+  return (
+    <div className="max-w-none break-words">
+      {renderBlockTokens(tokens, 'md', onOpenArtifact)}
+    </div>
+  );
 }

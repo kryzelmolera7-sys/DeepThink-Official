@@ -9,20 +9,36 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onSelectStarter }: WelcomeScreenProps) {
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-10 flex flex-col items-center justify-center relative">
-      <div className="w-full max-w-3xl space-y-8 relative">
+    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 flex flex-col items-center relative">
+      <div className="w-full max-w-3xl space-y-6 my-auto py-4 relative">
         <div className="space-y-3.5 text-center">
           <div className="inline-flex items-center justify-center p-3 rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-xs dark:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]">
             <BrandMark className="w-7 h-7" />
           </div>
-          <h1 className="font-display text-2xl sm:text-[32px] font-semibold tracking-tight text-slate-900 dark:text-slate-50 text-balance">
-            DeepThink 1 Universal Workspace
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="font-display text-2xl sm:text-[32px] font-semibold tracking-tight text-slate-900 dark:text-slate-50 text-balance">
+              DeepThink v1.5 Universal Workspace
+            </h1>
+          </div>
           <p className="text-sm sm:text-[15px] leading-relaxed text-slate-600 dark:text-slate-400 max-w-xl mx-auto text-balance">
-            Multi-step reasoning with inspectable thought traces, code
-            synthesis, multimodal file analysis, and live web-grounded
-            research.
+            Next-generation universal reasoning with Tree-of-Thought exploration,
+            interactive code & artifact canvas, 7 specialized domains, live web
+            grounding, and voice interaction.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
+              Tree-of-Thought
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
+              Live Artifact Canvas
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
+              Voice Dictation & Audio
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80">
+              7 Specialized Domains
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

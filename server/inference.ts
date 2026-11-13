@@ -99,7 +99,7 @@ function buildGeminiContents(messages: IncomingChatMessage[]): Content[] {
       role: 'model',
       parts: [
         {
-          text: 'I am DeepThink 1, a universal reasoning and multimodal large language model designed for deep analysis, software engineering, grounded research, and multimodal understanding.',
+          text: 'I am DeepThink v1.5, a state-of-the-art universal reasoning, software architecture, and multimodal large language model designed for deep analysis, software engineering, grounded research, quantitative analytics, and multimodal understanding.',
         },
       ],
     },
@@ -364,13 +364,13 @@ export async function streamUniversalResponse(
   const hasAttachments = Boolean(lastUserMsg?.attachments?.length);
 
   if (!hasAttachments && isDirectIdentityQuery(lastUserText)) {
-    const reply = `I am **DeepThink 1**, a universal reasoning and multimodal model built to handle deep analytical reasoning, software and systems engineering, multimodal file analysis, and live web-grounded research.\n\nRight now I am running in **${profile.name}** mode. How can I help you?`;
+    const reply = `I am **DeepThink v1.5**, a state-of-the-art universal reasoning and multimodal model built to handle deep analytical reasoning, software and systems architecture, multimodal file analysis, and live web-grounded research.\n\nRight now I am running in **${profile.name}** mode with advanced reasoning compute. How can I help you?`;
     emit('text', { delta: reply });
     emit('done', {
       metrics: {
         elapsedMs: 12,
-        outputTokens: 46,
-        engineLabel: `DeepThink 1 · ${profile.shortLabel}`,
+        outputTokens: 52,
+        engineLabel: `DeepThink v1.5 · ${profile.shortLabel}`,
       },
     });
     return;
@@ -379,6 +379,21 @@ export async function streamUniversalResponse(
   const ai = getGenAIClient();
   const contents = buildGeminiContents(body.messages);
   const detectedUrls = extractUrlsFromText(lastUserText);
+
+  if (body.engineRoute === 'tree-of-thought') {
+    await runTreeOfThoughtResponse({
+      ai,
+      contents,
+      systemInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      profileShortLabel: profile.shortLabel,
+      emit,
+      signal,
+    });
+    return;
+  }
 
   if (body.engineRoute === 'deep-verify') {
     await runDeepVerifyResponse({
@@ -404,7 +419,7 @@ export async function streamUniversalResponse(
       effort,
       useWebSearch,
       detectedUrls,
-      engineLabel: `DeepThink 1 · ${profile.shortLabel} (Lite)`,
+      engineLabel: `DeepThink v1.5 · ${profile.shortLabel} (Lite)`,
       emit,
       signal,
     });
@@ -421,7 +436,7 @@ export async function streamUniversalResponse(
       effort,
       useWebSearch,
       detectedUrls,
-      engineLabel: `DeepThink 1 · ${profile.shortLabel}`,
+      engineLabel: `DeepThink v1.5 · ${profile.shortLabel}`,
       emit,
       signal,
     });
@@ -459,7 +474,7 @@ export async function streamUniversalResponse(
         effort,
         useWebSearch,
         detectedUrls,
-        engineLabel: `DeepThink 1 · ${profile.shortLabel} (Lite Fallback)`,
+        engineLabel: `DeepThink v1.5 · ${profile.shortLabel} (Lite Fallback)`,
         emit,
         signal,
       });
@@ -483,7 +498,7 @@ export async function streamUniversalResponse(
           effort,
           useWebSearch: false,
           detectedUrls: [],
-          engineLabel: `DeepThink 1 · ${profile.shortLabel} (Lite · Search Off)`,
+          engineLabel: `DeepThink v1.5 · ${profile.shortLabel} (Lite · Search Off)`,
           emit,
           signal,
         });
@@ -601,7 +616,7 @@ async function streamOpenWeightsResponse(
   emit('done', {
     metrics: {
       elapsedMs: Date.now() - startedAt,
-      engineLabel: `DeepThink 1 · ${modelName}`,
+      engineLabel: `DeepThink v1.5 · ${modelName}`,
     },
   });
 }
@@ -658,7 +673,7 @@ async function runDeepVerifyResponse(params: {
       effort,
       useWebSearch,
       detectedUrls,
-      engineLabel: `DeepThink 1 · ${profileShortLabel} (Deep Verify)`,
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Deep Verify)`,
       emit: captureEmit,
       signal,
     });
@@ -676,7 +691,7 @@ async function runDeepVerifyResponse(params: {
       effort,
       useWebSearch: false,
       detectedUrls: [],
-      engineLabel: `DeepThink 1 · ${profileShortLabel} (Deep Verify Lite)`,
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Deep Verify Lite)`,
       emit: captureEmit,
       signal,
     });
@@ -714,7 +729,7 @@ async function runDeepVerifyResponse(params: {
       effort: effort === 'xhigh' ? 'high' : effort,
       useWebSearch: false,
       detectedUrls: [],
-      engineLabel: `DeepThink 1 · ${profileShortLabel} (Verified 2-Pass)`,
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Verified 2-Pass)`,
       emit: (event, payload) => {
         if (event === 'thought') {
           emit('thought', payload);
@@ -743,7 +758,164 @@ async function runDeepVerifyResponse(params: {
       emit('done', {
         metrics: {
           elapsedMs: Date.now() - startedAt,
-          engineLabel: `DeepThink 1 · ${profileShortLabel}`,
+          engineLabel: `DeepThink v1.5 · ${profileShortLabel}`,
+        },
+      });
+      return;
+    }
+    throw new Error(formatInferenceError(err));
+  }
+}
+
+async function runTreeOfThoughtResponse(params: {
+  ai: GoogleGenAI;
+  contents: Content[];
+  systemInstruction: string;
+  effort: ReasoningEffort;
+  useWebSearch: boolean;
+  detectedUrls: string[];
+  profileShortLabel: string;
+  emit: SseEmitter;
+  signal: AbortSignal;
+}): Promise<void> {
+  const {
+    ai,
+    contents,
+    systemInstruction,
+    effort,
+    useWebSearch,
+    detectedUrls,
+    profileShortLabel,
+    emit,
+    signal,
+  } = params;
+
+  const startedAt = Date.now();
+  let hypothesesText = '';
+  let usedModel = UNIVERSAL_MODEL;
+  let capturedSources: GroundingSource[] = [];
+
+  emit('thought', {
+    delta:
+      '**Phase 1 — Tree-of-Thought Hypothesis Exploration**\n\nBranching problem space into 3 distinct analytical hypotheses & methodologies...\n',
+  });
+
+  const branchInstruction =
+    `${systemInstruction}\n\n` +
+    'TREE-OF-THOUGHT INSTRUCTION: Decompose this request into 3 distinct, independent reasoning hypotheses or solution branches:\n' +
+    '1. Hypothesis A: Direct canonical / analytical implementation\n' +
+    '2. Hypothesis B: Invariant-first / edge-case / adversarial hardening approach\n' +
+    '3. Hypothesis C: Scalable architectural / optimal performance alternative\n' +
+    'Detail the mechanism, trade-offs, and failure modes for each branch.';
+
+  const captureEmit: SseEmitter = (event, payload) => {
+    if (event === 'thought') {
+      emit('thought', payload);
+    } else if (event === 'text') {
+      const delta = (payload as { delta?: string }).delta ?? '';
+      hypothesesText += delta;
+    } else if (event === 'sources') {
+      const s = (payload as { sources?: GroundingSource[] }).sources ?? [];
+      capturedSources = s;
+      emit('sources', payload);
+    }
+  };
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: UNIVERSAL_MODEL,
+      contents,
+      systemInstruction: branchInstruction,
+      effort,
+      useWebSearch,
+      detectedUrls,
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Tree-of-Thought Branching)`,
+      emit: captureEmit,
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted || !isQuotaOrRateLimitError(err)) {
+      throw new Error(formatInferenceError(err));
+    }
+    usedModel = FALLBACK_LITE_MODEL;
+    hypothesesText = '';
+    await runGeminiStreamAttempt({
+      ai,
+      model: FALLBACK_LITE_MODEL,
+      contents,
+      systemInstruction: branchInstruction,
+      effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Tree-of-Thought Lite)`,
+      emit: captureEmit,
+      signal,
+    });
+  }
+
+  if (signal.aborted) return;
+
+  emit('thought', {
+    delta:
+      '\n\n**Phase 2 — Multi-Path Trade-Off Audit & Optimal Synthesis**\n\nComparing hypotheses A, B, and C against edge cases and selecting the optimal verified strategy...\n',
+  });
+
+  const synthesisContents: Content[] = [
+    ...contents,
+    {
+      role: 'model',
+      parts: [{ text: hypothesesText }],
+    },
+    {
+      role: 'user',
+      parts: [
+        {
+          text:
+            'Synthesize the optimal final solution by adopting the best elements of the 3 hypotheses above while eliminating edge cases and vulnerabilities. Provide the comprehensive, authoritative, production-grade response directly to the user.',
+        },
+      ],
+    },
+  ];
+
+  try {
+    await runGeminiStreamAttempt({
+      ai,
+      model: usedModel,
+      contents: synthesisContents,
+      systemInstruction,
+      effort: effort === 'xhigh' ? 'high' : effort,
+      useWebSearch: false,
+      detectedUrls: [],
+      engineLabel: `DeepThink v1.5 · ${profileShortLabel} (Tree-of-Thought)`,
+      emit: (event, payload) => {
+        if (event === 'thought') {
+          emit('thought', payload);
+        } else if (event === 'text') {
+          emit('text', payload);
+        } else if (event === 'done') {
+          const m = (payload as { metrics?: Record<string, unknown> }).metrics ?? {};
+          emit('done', {
+            metrics: {
+              ...m,
+              elapsedMs: Date.now() - startedAt,
+            },
+          });
+        }
+      },
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) return;
+    if (isQuotaOrRateLimitError(err) && hypothesesText.trim()) {
+      emit('text', { delta: hypothesesText });
+      if (capturedSources.length > 0) {
+        emit('sources', { sources: capturedSources });
+      }
+      emit('done', {
+        metrics: {
+          elapsedMs: Date.now() - startedAt,
+          engineLabel: `DeepThink v1.5 · ${profileShortLabel}`,
         },
       });
       return;

@@ -38,7 +38,7 @@ export function ArchitectureModal({
             id="architecture-title"
             className="font-display text-base font-semibold text-slate-900 dark:text-slate-50"
           >
-            DeepThink 1 Model Architecture & Engine
+            DeepThink v1.5 Model Architecture & Engine
           </h2>
           <button
             type="button"
@@ -67,6 +67,22 @@ export function ArchitectureModal({
               </div>
               <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
                 <span className="font-medium text-slate-700 dark:text-slate-300">
+                  Tree-of-Thought Explorer
+                </span>
+                <span className="font-mono text-slate-600 dark:text-slate-400">
+                  3-Branch Multi-Hypothesis Synthesis
+                </span>
+              </div>
+              <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  2-Pass Adversarial Verification
+                </span>
+                <span className="font-mono text-slate-600 dark:text-slate-400">
+                  Draft + Adversarial Invariant Audit
+                </span>
+              </div>
+              <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   High-Quota Lite Fallback
                 </span>
                 <span className="font-mono text-slate-600 dark:text-slate-400">
@@ -85,7 +101,7 @@ export function ArchitectureModal({
               </div>
             </div>
             <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-              In Auto mode, DeepThink 1 routes through the Universal Reasoning
+              In Auto mode, DeepThink v1.5 routes through the Universal Reasoning
               Core and automatically fails over to{' '}
               <code className="font-mono">gemini-3.1-flash-lite</code> (or your
               configured open-weights endpoint) if quota limits occur. To run

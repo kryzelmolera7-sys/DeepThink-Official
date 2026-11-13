@@ -3,11 +3,26 @@ export type DomainProfileId =
   | 'reasoning'
   | 'coding'
   | 'research'
-  | 'multimodal';
+  | 'multimodal'
+  | 'data'
+  | 'security';
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 
-export type EngineRoute = 'auto' | 'deep-verify' | 'fast-lite' | 'open-weights';
+export type EngineRoute =
+  | 'auto'
+  | 'deep-verify'
+  | 'tree-of-thought'
+  | 'fast-lite'
+  | 'open-weights';
+
+export interface ArtifactItem {
+  id: string;
+  title: string;
+  language: string;
+  content: string;
+  type: 'html' | 'svg' | 'code' | 'markdown';
+}
 
 export interface Attachment {
   id: string;

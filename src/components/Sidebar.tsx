@@ -3,6 +3,7 @@ import {
   Moon,
   Plus,
   Search,
+  Sparkles,
   Sun,
   Trash2,
   X,
@@ -22,6 +23,7 @@ interface SidebarProps {
   onNewThread: () => void;
   onDeleteThread: (id: string) => void;
   onOpenArchitecture: () => void;
+  onOpenCapabilities: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
 }
@@ -37,6 +39,7 @@ export function Sidebar({
   onNewThread,
   onDeleteThread,
   onOpenArchitecture,
+  onOpenCapabilities,
   isDark,
   onToggleTheme,
 }: SidebarProps) {
@@ -50,10 +53,13 @@ export function Sidebar({
     >
       {/* Brand header */}
       <div className="flex items-center justify-between gap-3 px-4 h-14 border-b border-slate-200 dark:border-slate-800/90">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <BrandMark className="w-6 h-6 shrink-0" />
           <span className="font-display text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 whitespace-nowrap truncate">
-            DeepThink 1
+            DeepThink
+          </span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 shrink-0">
+            v1.5
           </span>
         </div>
         <button
@@ -150,14 +156,22 @@ export function Sidebar({
       </div>
 
       {/* Bottom workspace utilities */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800/90 flex items-center justify-between gap-2">
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800/90 flex items-center justify-between gap-1.5">
+        <button
+          type="button"
+          onClick={onOpenCapabilities}
+          className="min-h-[38px] px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          <span>Tools</span>
+        </button>
         <button
           type="button"
           onClick={onOpenArchitecture}
-          className="flex-1 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 inline-flex items-center gap-2 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-h-[38px] px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Cpu className="w-3.5 h-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
-          <span>Architecture</span>
+          <span>Arch</span>
         </button>
         <button
           type="button"

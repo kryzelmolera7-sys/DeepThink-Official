@@ -155,6 +155,7 @@ export function exportThreadToMarkdown(thread: ChatThread): string {
     '',
     `- **Profile**: ${thread.profile}`,
     `- **Reasoning Effort**: ${thread.effort}`,
+    `- **Model Engine**: DeepThink v1.5`,
     `- **Exported**: ${new Date().toISOString()}`,
     '',
     '---',
@@ -162,7 +163,7 @@ export function exportThreadToMarkdown(thread: ChatThread): string {
   ];
 
   for (const msg of thread.messages) {
-    const speaker = msg.role === 'user' ? 'User' : 'DeepThink 1';
+    const speaker = msg.role === 'user' ? 'User' : 'DeepThink v1.5';
     lines.push(`## ${speaker}`);
     lines.push('');
     if (msg.thoughts && msg.thoughts.trim()) {
@@ -188,4 +189,55 @@ export function exportThreadToMarkdown(thread: ChatThread): string {
   }
 
   return lines.join('\n');
+}
+
+export function exportThreadToJson(thread: ChatThread): string {
+  return JSON.stringify(
+    {
+      version: 'deepthink-v1.5',
+      exportedAt: new Date().toISOString(),
+      thread: {
+        id: thread.id,
+        title: thread.title,
+        profile: thread.profile,
+        effort: thread.effort,
+        useWebSearch: thread.useWebSearch,
+        customSystemPrompt: thread.customSystemPrompt,
+        createdAt: thread.createdAt,
+        updatedAt: thread.updatedAt,
+        messages: thread.messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          thoughts: m.thoughts,
+          sources: m.sources,
+          metrics: m.metrics,
+          createdAt: m.createdAt,
+        })),
+      },
+    },
+    null,
+    2
+  );
+}
+
+export function forkThread(
+  sourceThread: ChatThread,
+  upToMessageId: string
+): ChatThread {
+  const idx = sourceThread.messages.findIndex((m) => m.id === upToMessageId);
+  const branchedMessages =
+    idx !== -1
+      ? sourceThread.messages.slice(0, idx + 1)
+      : [...sourceThread.messages];
+
+  const now = Date.now();
+  return {
+    ...sourceThread,
+    id: `thread-fork-${now}-${Math.random().toString(36).slice(2, 7)}`,
+    title: `${sourceThread.title} (Branch)`,
+    messages: branchedMessages.map((m) => ({ ...m })),
+    createdAt: now,
+    updatedAt: now,
+  };
 }

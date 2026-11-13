@@ -1,6 +1,6 @@
 {
   "name": "DeepThink 1",
-  "description": "DeepThink 1 is a universal reasoning and multimodal LLM workspace with visible thinking traces, domain routing, live web grounding, and open-weights endpoint compatibility.",
+  "description": "DeepThink v1.5 is an upgraded universal reasoning, software architecture, and multimodal LLM workspace with visible thinking traces, Tree-of-Thought exploration, live web grounding, and interactive artifact canvas.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
