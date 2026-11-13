@@ -1,0 +1,6 @@
+{
+  "name": "DeepThink 1",
+  "description": "DeepThink 1 is a universal reasoning and multimodal LLM workspace with visible thinking traces, domain routing, live web grounding, and open-weights endpoint compatibility.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
